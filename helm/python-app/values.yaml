@@ -1,0 +1,13 @@
+replicaCount: 4
+
+image:
+  repository: cloudketan/python
+  tag: "p1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30007
+
+containerPort: 5000

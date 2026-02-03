@@ -1,0 +1,158 @@
+# name: DevSecOps Python Flask Pipeline
+# on:
+#   push:
+#     branches: [ "main" ]
+#   pull_request:
+
+# env:
+#   IMAGE_NAME: cloudketan/python
+#   IMAGE_TAG: ${{ github.sha }}
+
+# jobs:
+#   # =====================================================
+#   # 1️⃣ CHECKOUT + CLEANUP
+#   # =====================================================
+#   checkout:
+#     runs-on: self-hosted
+#     steps:
+
+#       - name: Clean temporary files
+#         run: |
+#           sudo rm -rf /tmp/gitleaks* 
+#           sudo rm -rf /tmp/*   # optional, clears leftover temp files
+
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           clean: false
+          
+#   # =====================================================
+#   # 2️⃣ PYTHON SETUP & DEPENDENCIES
+#   # =====================================================
+#   python-setup:
+#     runs-on: self-hosted
+#     needs: checkout
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: Set up Python
+#         uses: actions/setup-python@v5
+#         with:
+#           python-version: '3.12'
+
+#       - name: Install Dependencies
+#         run: |
+#           python -m pip install --upgrade pip
+#           pip install -r requirements.txt
+
+#   # =====================================================
+#   # 3️⃣ GITLEAKS (SECRET SCANNING)
+#   # =====================================================
+#   gitleaks:
+#     runs-on: self-hosted
+#     needs: python-setup
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: GitLeaks Scan
+#         uses: gitleaks/gitleaks-action@v2
+
+#   # =====================================================
+#   # 4️⃣ SONARQUBE (SAST)
+#   # =====================================================
+#   sonarqube:
+#     runs-on: self-hosted
+#     needs: gitleaks
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: SonarQube Scan
+#         uses: sonarsource/sonarqube-scan-action@v2
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#         with:
+#           args: >
+#             -Dsonar.projectKey=python-app
+#             -Dsonar.sources=.
+#             -Dsonar.language=py
+
+#   # =====================================================
+#   # 5️⃣ OWASP DEPENDENCY CHECK (SCA)
+#   # =====================================================
+#   owasp:
+#     runs-on: self-hosted
+#     needs: sonarqube
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+#       - name: Clean old Dependency-Check DB
+#         run: rm -rf ./dependency-check/*
+
+#       - name: OWASP Dependency Check
+#         uses: dependency-check/Dependency-Check_Action@main
+#         with:
+#           project: "python-app"
+#           path: "."
+#           format: "HTML"
+#           out: ${{ runner.temp }}/dependency-check
+#           args: >
+#             --noupdate false
+
+#   # =====================================================
+#   # 6️⃣ DOCKER BUILD
+#   # =====================================================
+#   docker-build:
+#     runs-on: self-hosted
+#     needs: owasp
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: Docker Login
+#         uses: docker/login-action@v3
+#         with:
+#             username: ${{ secrets.DOCKERHUB_USERNAME }}
+#             password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+#       - name: Docker Build
+#         run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
+
+#   # =====================================================
+#   # 7️⃣ DOCKER PUSH
+#   # =====================================================
+#   docker-push:
+#     runs-on: self-hosted
+#     needs: docker-build
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: Docker Push
+#         run: |
+#           docker push $IMAGE_NAME:$IMAGE_TAG
+
+#   # =====================================================
+#   # 8️⃣ KUBERNETES DEPLOY
+#   # =====================================================
+#   k8s-deploy:
+#     runs-on: self-hosted
+#     needs: docker-push
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           clean: false
+
+#       - name: Deploy to Kubernetes
+#         run: |
+#           kubectl apply -f py-argocd.yaml

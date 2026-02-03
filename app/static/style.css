@@ -1,0 +1,53 @@
+/* Body styling */
+body {
+    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Card container */
+.card {
+    background: rgba(0, 0, 0, 0.25);
+    padding: 50px 60px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    animation: float 6s ease-in-out infinite;
+}
+
+/* Floating animation for card */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+}
+
+/* Gradient text effect */
+.gradient-text {
+    background: linear-gradient(90deg, #ff7e5f, #feb47b, #86a8e7, #91eae4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin: 0.5em 0;
+    text-transform: uppercase;
+}
+
+/* Neon shadow text for paragraph */
+.shadow-text {
+    font-size: 1.2em;
+    color: #fff;
+    text-shadow: 0 0 5px #fff, 0 0 10px #ff7e5f, 0 0 20px #ff7e5f;
+}
+
+/* Hover effect on card */
+.card:hover {
+    transform: scale(1.05);
+    transition: transform 0.3s ease-in-out;
+}
