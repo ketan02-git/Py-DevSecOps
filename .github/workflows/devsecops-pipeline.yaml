@@ -7,7 +7,7 @@ on:
 
 env:
   IMAGE_NAME: cloudketan/python
-  IMAGE_TAG: "p1"
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   devsecops-pipeline:
@@ -15,12 +15,16 @@ jobs:
     steps:
 
       # =========================
-      # 1️⃣ Checkout code
+      # 0️⃣ Docker cleanup (free space)
+      # =========================
+      - name: Docker Cleanup
+        run: sudo docker system prune -a --volumes --force || true
+
+      # =========================
+      # 1️⃣ Checkout Code
       # =========================
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          clean: false
 
       # =========================
       # 2️⃣ Clean temp files
@@ -44,43 +48,36 @@ jobs:
           pip install -r app/requirements.txt
 
       # =========================
-      # 4️⃣ Gitleaks (secret scanning)
+      # 4️⃣ Gitleaks Scan
       # =========================
       - name: GitLeaks Scan
         uses: gitleaks/gitleaks-action@v2
 
       # =========================
-      # 5️⃣ SonarQube Scan (SAST)
+      # 5️⃣ SonarQube Scan
       # =========================
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v2
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=python-app
-            -Dsonar.sources=.
-            -Dsonar.language=py
+      - name: SonarQube Scan (CLI only, no Docker)
+        run: |
+          sudo apt-get update && sudo apt-get install -y unzip wget
+          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-10.0-linux.zip
+          unzip sonar-scanner-cli-10.0-linux.zip
+          ./sonar-scanner-10.0-linux/bin/sonar-scanner \
+            -Dsonar.projectKey=python-app \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
       # =========================
-      # 6️⃣ OWASP Dependency Check (SCA)
+      # 6️⃣ OWASP Dependency Check (CLI only)
       # =========================
-      - name: Clean old Dependency-Check DB
-        run: rm -rf ./dependency-check/*
-
-      - name: OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: "python-app"
-          path: "."
-          format: "HTML"
-          out: ${{ runner.temp }}/dependency-check
-          args: >
-            --noupdate false
+      - name: OWASP Dependency Check (CLI)
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.1/dependency-check-8.4.1-release.zip
+          unzip dependency-check-8.4.1-release.zip
+          ./dependency-check/bin/dependency-check.sh --project "python-app" --scan . --format HTML --out ${{ runner.temp }}/dependency-check
 
       # =========================
-      # 7️⃣ Docker Login & Build
+      # 7️⃣ Docker Login, Build & Push
       # =========================
       - name: Docker Login
         uses: docker/login-action@v3
@@ -91,14 +88,11 @@ jobs:
       - name: Docker Build
         run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-      # =========================
-      # 8️⃣ Docker Push
-      # =========================
       - name: Docker Push
         run: docker push $IMAGE_NAME:$IMAGE_TAG
 
       # =========================
-      # 9️⃣ Kubernetes Deploy
+      # 8️⃣ Kubernetes Deploy
       # =========================
       - name: Deploy to Kubernetes
         run: kubectl apply -f py-argocd.yaml
