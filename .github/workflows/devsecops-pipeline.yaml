@@ -11,7 +11,7 @@ env:
 
 jobs:
   devsecops-pipeline:
-    runs-on: self-hosted
+    runs-on: ubuntu-24.04
     steps:
 
       # =========================
@@ -53,55 +53,60 @@ jobs:
       - name: GitLeaks Scan
         uses: gitleaks/gitleaks-action@v2
 
-      # =========================
-      # 5️⃣ SonarQube Scan (NO Docker)
-      # =========================
-      - name: SonarQube Scan
-        shell: bash
-        run: |
-          set -e
-      
-          curl -fL \
-            -o sonar-scanner.zip \
-            https://github.com/SonarSource/sonar-scanner-cli/releases/download/5.0.1.3006/sonar-scanner-cli-5.0.1.3006-linux.zip
-      
-          unzip -q sonar-scanner.zip
-      
-          export PATH="$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
-      
-          sonar-scanner \
-            -Dsonar.projectKey=python-app \
-            -Dsonar.sources=. \
-            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
-            -Dsonar.login="${{ secrets.SONAR_TOKEN }}"
-      
+      # # =========================
+      # # 5️⃣ SonarQube Scan (NO Docker)
+      # # =========================
+      # - name: SonarQube Scan
+      #   uses: SonarSource/sonarqube-scan-action@v7.0.0   # latest stable
+      #   with:
+      #     args: >
+      #       -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+      #       -Dsonar.sources=.
+      #       -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      #       -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+      #       # Add any additional sonar properties here
+      #   env:
+      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       # =========================
       # 6️⃣ OWASP Dependency Check (CLI only)
       # =========================
-      - name: OWASP Dependency Check (CLI)
-        run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.1/dependency-check-8.4.1-release.zip
-          unzip dependency-check-8.4.1-release.zip
-          ./dependency-check/bin/dependency-check.sh --project "python-app" --scan . --format HTML --out ${{ runner.temp }}/dependency-check
-
-      # =========================
-      # 7️⃣ Docker Login, Build & Push
-      # =========================
-      - name: Docker Login
-        uses: docker/login-action@v3
+      - name: Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        id: depcheck
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          project: "python-app"        # Project name for the report
+          path: "."                    # Directory to scan
+          format: "HTML"               # Output report format
+          out: "dependency-check-reports"  # Report output folder (relative to repo)
+          args: >
+            --failOnCVSS 7             # Optional: fail if high‑severity CVSS hits
+            --enableRetired            # Optional: include retired vulnerabilities
+      
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: Dependency-Check Report
+          path: ${{ github.workspace }}/dependency-check-reports
 
-      - name: Docker Build
-        run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
+      # # =========================
+      # # 7️⃣ Docker Login, Build & Push
+      # # =========================
+      # - name: Docker Login
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Docker Push
-        run: docker push $IMAGE_NAME:$IMAGE_TAG
+      # - name: Docker Build
+      #   run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-      # =========================
-      # 8️⃣ Kubernetes Deploy
-      # =========================
-      - name: Deploy to Kubernetes
-        run: kubectl apply -f py-argocd.yaml
+      # - name: Docker Push
+      #   run: docker push $IMAGE_NAME:$IMAGE_TAG
+
+      # # =========================
+      # # 8️⃣ Kubernetes Deploy
+      # # =========================
+      # - name: Deploy to Kubernetes
+      #   run: kubectl apply -f py-argocd.yaml
