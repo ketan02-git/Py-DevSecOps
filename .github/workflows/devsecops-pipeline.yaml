@@ -61,20 +61,20 @@ jobs:
         run: |
           set -e
       
-          curl -fL -H "User-Agent: Mozilla/5.0" \
+          curl -fL \
             -o sonar-scanner.zip \
-            https://github.com/SonarSource/sonar-scanner-cli/releases/download/10.0.0.68432/sonar-scanner-cli-10.0.0.68432-linux.zip
+            https://github.com/SonarSource/sonar-scanner-cli/releases/download/5.0.1.3006/sonar-scanner-cli-5.0.1.3006-linux.zip
       
           unzip -q sonar-scanner.zip
       
-          export PATH="$PWD/sonar-scanner-10.0.0.68432-linux/bin:$PATH"
+          export PATH="$PWD/sonar-scanner-5.0.1.3006-linux/bin:$PATH"
       
           sonar-scanner \
             -Dsonar.projectKey=python-app \
             -Dsonar.sources=. \
             -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
             -Dsonar.login="${{ secrets.SONAR_TOKEN }}"
-
+      
 
       # =========================
       # 6️⃣ OWASP Dependency Check (CLI only)
