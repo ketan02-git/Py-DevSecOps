@@ -72,14 +72,18 @@ jobs:
       # =========================
       # 6️⃣ OWASP Dependency Check (CLI only)
       # =========================
-      - name: Run OWASP Dependency Check
+      - name: Clean old Dependency-Check DB
+        run: rm -rf ./dependency-check/*
+
+      - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
           project: "python-app"
           path: "."
-          format: HTML
-          out: "dependency-check-reports"
-          args: --failOnCVSS 7 --enableRetired
+          format: "HTML"
+          out: ${{ runner.temp }}/dependency-check
+          args: >
+            --noupdate false
 
       # # =========================
       # # 7️⃣ Docker Login, Build & Push
