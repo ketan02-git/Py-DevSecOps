@@ -13,30 +13,18 @@ jobs:
   devsecops-pipeline:
     runs-on: ubuntu-24.04
     steps:
-
-      # =========================
-      # 0️⃣ Docker cleanup (free space)
-      # =========================
+    
       - name: Docker Cleanup
         run: sudo docker system prune -a --volumes --force || true
 
-      # =========================
-      # 1️⃣ Checkout Code
-      # =========================
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # =========================
-      # 2️⃣ Clean temp files
-      # =========================
       - name: Clean temporary files
         run: |
           sudo rm -rf /tmp/gitleaks* 
           sudo rm -rf /tmp/*
 
-      # =========================
-      # 3️⃣ Python setup & dependencies
-      # =========================
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -47,31 +35,29 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
 
-      # =========================
-      # 4️⃣ Gitleaks Scan
-      # =========================
       - name: GitLeaks Scan
         uses: gitleaks/gitleaks-action@v2
 
-      # # =========================
-      # # 5️⃣ SonarQube Scan (NO Docker)
-      # # =========================
-      # - name: SonarQube Scan
-      #   uses: SonarSource/sonarqube-scan-action@v7.0.0   # latest stable
-      #   with:
-      #     args: >
-      #       -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-      #       -Dsonar.sources=.
-      #       -Dsonar.login=${{ secrets.SONAR_TOKEN }}
-      #       -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
-      #       # Add any additional sonar properties here
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=python-app
+            -Dsonar.sources=.
+            -Dsonar.language=py
 
-      # =========================
-      # 6️⃣ OWASP Dependency Check (CLI only)
-      # =========================
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Docker Build
+        run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
+
       - name: Clean old Dependency-Check DB
         run: rm -rf ./dependency-check/*
 
@@ -85,23 +71,8 @@ jobs:
           args: >
             --noupdate false
 
-      # # =========================
-      # # 7️⃣ Docker Login, Build & Push
-      # # =========================
-      # - name: Docker Login
-      #   uses: docker/login-action@v3
-      #   with:
-      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
-      #     password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Docker Push
+        run: docker push $IMAGE_NAME:$IMAGE_TAG
 
-      # - name: Docker Build
-      #   run: docker build -t $IMAGE_NAME:$IMAGE_TAG .
-
-      # - name: Docker Push
-      #   run: docker push $IMAGE_NAME:$IMAGE_TAG
-
-      # # =========================
-      # # 8️⃣ Kubernetes Deploy
-      # # =========================
-      # - name: Deploy to Kubernetes
-      #   run: kubectl apply -f py-argocd.yaml
+      - name: Deploy to Kubernetes
+        run: kubectl apply -f py-argocd.yaml
