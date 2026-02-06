@@ -56,6 +56,16 @@ jobs:
       # =========================
       # 5️⃣ SonarQube Scan
       # =========================
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      
       - name: SonarQube Scan (CLI mode, no Docker)
         uses: SonarSource/sonarqube-scan-action@v2
         env:
@@ -66,8 +76,6 @@ jobs:
           args: >
             -Dsonar.projectKey=python-app
             -Dsonar.sources=.
-
-
 
       # =========================
       # 6️⃣ OWASP Dependency Check (CLI only)
