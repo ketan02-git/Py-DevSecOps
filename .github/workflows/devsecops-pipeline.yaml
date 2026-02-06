@@ -56,16 +56,16 @@ jobs:
       # =========================
       # 5️⃣ SonarQube Scan
       # =========================
-      - name: SonarQube Scan (CLI only, no Docker)
-        run: |
-          sudo apt-get update && sudo apt-get install -y unzip wget
-          wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-10.0-linux.zip
-          unzip sonar-scanner-cli-10.0-linux.zip
-          ./sonar-scanner-10.0-linux/bin/sonar-scanner \
-            -Dsonar.projectKey=python-app \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v2
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=python-app
+            -Dsonar.sources=.
+
 
       # =========================
       # 6️⃣ OWASP Dependency Check (CLI only)
