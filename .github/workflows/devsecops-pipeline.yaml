@@ -56,15 +56,17 @@ jobs:
       # =========================
       # 5️⃣ SonarQube Scan
       # =========================
-      - name: SonarQube Scan
+      - name: SonarQube Scan (CLI mode, no Docker)
         uses: SonarSource/sonarqube-scan-action@v2
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
+          scannerMode: cli
           args: >
             -Dsonar.projectKey=python-app
             -Dsonar.sources=.
+
 
 
       # =========================
