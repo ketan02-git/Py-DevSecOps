@@ -12,6 +12,25 @@ service:
 
 containerPort: 5000
 
+resources: {}
+
+ingress:
+  enabled: false
+  annotations: {}
+  hosts: []
+  tls: []
+
+autoscaling:
+  enabled: false
+
+podLabels: {}
+podAnnotations: {}
+
+# Fix ServiceAccount template
 serviceAccount:
   create: true
   name: ""
+
+# Fix httproute template
+httpRoute:
+  enabled: false
